@@ -1,0 +1,25 @@
+spring:
+  application:
+    name: eureka-server #应用名称
+  cloud:
+    config:
+      enabled: false #不准从远程服务器获取配置
+
+#单个server,而不是server集群
+server:
+  port: 7001
+eureka:
+  instance:
+    hostname: localhost
+  client:
+    fetch-registry: false #单server不用从其它server获取信息
+    register-with-eureka: false #单server，不需要把自己注册给别人。这个参数可以决定谁覆盖谁
+    serviceUrl:
+      defaultZone: http://${eureka.instance.hostname}:${server.port}/eureka/ #单节点
+      #defaultZone: http://eureka7001.com:7001/eureka/,http://eureka7003.com:7003/eureka/ #集群
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*' #routes

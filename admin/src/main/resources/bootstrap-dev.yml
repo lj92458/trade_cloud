@@ -1,0 +1,75 @@
+server:
+  port: 9004
+  servlet:
+    context-path: /
+    session:
+      timeout: P0DT0H0M300.0S #300秒，必须是合法的Duration
+
+debug: false
+logging.config: classpath:logback-${spring.profiles.active}-spring.xml #如果用默认值，需要在logabck文件中用springProfile
+
+spring:
+  application:
+    name: admin
+  datasource:
+    type: com.zaxxer.hikari.HikariDataSource
+    url: jdbc:sqlite:d:/db_sqlite/trade_coin2coin.db
+    username:
+    password:
+    hikari: #Springboot2.0以后默认数据库连接池选择了Hikari（性能高）
+      pool-name: Retail_HikariCP
+      minimum-idle: 5 #最小空闲连接数量
+      idle-timeout: 600000 #空闲连接存活最大时间，默认600000（10分钟）
+      maximum-pool-size: 10 #连接池最大连接数，默认是10
+      auto-commit: true  #此属性控制从池返回的连接的默认自动提交行为,默认值：true
+      max-lifetime: 1800000 #此属性控制池中连接的最长生命周期，值0表示无限生命周期，默认1800000即30分钟
+      connection-timeout: 30000 #数据库连接超时时间,默认30秒，即30000
+      connection-test-query: SELECT 1
+  cloud:
+    loadbalancer:
+      ribbon:
+        enabled: true #使用RibbonLoadBalancerClient ，而不是BlockingLoadBalancerClient
+    config:
+      enabled: true
+      name: admin
+      profile: ${spring.profiles.active}
+      uri: #http://localhost:4001 #可以不配置。因为依赖服务发现
+      discovery:
+        enabled: true #是否从配置中心获取配置，默认false
+        service-id: config-server
+
+  security: #添加spring-boot-starter-security后设置对应的用户名和密码
+    user:
+      name: admin
+      password: admin
+  redis: #java驱动包有Redisson、Jedis、lettuce、lettuce-core等等，官方推荐使用 Redisson
+    database: 0 #数据库序号。redis单机模式默认有16个数据库(或者叫命名空间，编号0~15)，connectionFactory到底连接哪个。
+                #每个数据库的数据是隔离的不能共享。如果是集群，就只有0号库
+    host: localhost
+    port: 6379
+  messages:
+    basename: languages/messages
+    cache-duration: -1
+    servlet:
+      multipart:
+        enabled: true
+        max-file-size: 40960
+        max-request-size: 20971520
+  #配置RabbitMQ
+  rabbitmq:
+    port: 5672
+    host: localhost
+    username: guest
+    password: guest
+eureka:
+  instance:
+    instance-id: service-admin #服务名
+    prefer-ip-address: true #使用自己的ip地址注册而不是主机名
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:7001/eureka/ #单节点
+      #defaultZone: http://eureka7001.com:7001/eureka/,http://eureka7002.com:7002/eureka/,http://eureka7003.com:7003/eureka/
+
+mybatis:
+  mapper-locations: classpath*:mybatis/sqlMap/**/*Mapper.xml
+  config-location:  classpath:mybatis/mybatis-config.xml

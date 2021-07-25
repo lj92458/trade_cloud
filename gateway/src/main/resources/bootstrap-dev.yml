@@ -1,0 +1,199 @@
+server:
+  port: 5001
+spring:
+  application:
+    name: gateway
+  cloud:
+    loadbalancer:
+      ribbon:
+        enabled: true
+    config:
+      enabled: false #不准从远程服务器获取配置
+#    gateway: #参考https://www.cnblogs.com/crazymakercircle/p/11704077.html
+#      default-filters: #https://blog.csdn.net/lushuaiyin/article/details/105771882
+#        - name: Hystrix
+#          args:
+#            name: myfallback
+#            fallbackUri: forward:/defaultfallback
+#      routes:
+#        - id: seckill-provider-route
+#          uri: lb://seckill-provider
+#          predicates:
+#            - Path=/seckill-provider/**
+#          filters:
+#            - StripPrefix=1 #StripPrefix=1就代表截取路径的个数为1，比如前端过来请求/test/good/1/view，匹配成功后，路由到后端的请求路径就会变成http://localhost:8888/good/1/view
+#            - name: Hystrix
+#              args: #args是map类型
+#                name: commandone #应该被替换成commandone
+#                fallbackUri: forward:/fallback
+#
+#        - id: message-provider-route
+#          uri: lb://message-provider
+#          predicates:
+#            - Path=/message-provider/**
+#          filters:
+#            - StripPrefix=1
+#            - name: CircuitBreaker #CircuitBreaker是一种抽象，提供了四种实现：Hystrix　Resilience4J　Sentinel　Spring－Retry
+#                #使用resilience4j断路器,https://blog.csdn.net/lizz861109/article/details/107338462
+#              args:
+#                name: cacheCustomizer  #自定义断路器配置。也有默认的 #https://blog.csdn.net/netyeaxi/article/details/104469248/
+#                fallbackUri: forward:/cache/timestemp #异常跳转
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*' #routes
+
+eureka:
+  client:
+    register-with-eureka: false
+    serviceUrl:
+      defaultZone: http://localhost:7001/eureka/ #单节点
+      #defaultZone: http://eureka7001.com:7001/eureka/,http://eureka7002.com:7002/eureka/,http://eureka7003.com:7003/eureka/
+
+  instance:
+    instance-id: gateway-zuul #服务名
+    prefer-ip-address: true #使用自己的ip地址注册而不是主机名
+
+zuul:
+  routes:
+    route1:
+      path: /gateway_admin/**  #代理名称
+      serviceId: service-admin #代理的服务。支持负载均衡
+      #url: #直接写rul，是不支持负债均衡的
+      sensitiveHeaders: #"*" 空着，表示不过滤任何信息，全部传给下游
+    route2:
+      path: /gateway_engine/**
+      serviceId: service-engine
+      #prefix: /api  #公共前缀
+      sensitiveHeaders: #"*"
+    route3:
+      path: /gateway_market/**
+      serviceId: service-market
+      #prefix: /api  #公共前缀
+      sensitiveHeaders: #"*"
+#service-admin:
+#  ribbon:
+#    listOfServers: http://localhost:9004
+ribbon:
+  eureka:
+    enabled: true
+  eager-load: #不允许懒加载
+    enabled: true
+  ReadTimeout: 20000
+  ConnectTimeout: 1000
+
+
+  #让zuul自己管理负载均衡(调用ribbon和hystrix)，则需要添加：ribbon.eureka.enabled: false配置(否则就是走eureka负债均衡)，这时就不能使用服务名称去调用接口了。
+  #而是任意命名serviceId。然后把这个任意命名的东西，定义成复杂对象
+#eureka负债均衡非常简单，不需要任何配置。组件本身维护了一组配置，按默认策略（轮询）。参考： https://www.cnblogs.com/jizhong/p/11431554.html
+# 深度好文 https://blog.csdn.net/qq_33814088/article/details/84557726
+#结论：当你提供serviceId或者自定义复杂对象且提供serviceId.ribbon.listOfServers时，就会调用ribbon和hystrix
+      #如果直接写rul，那么就会简单转发。
+
+
+#resilience4j.circuitbreaker:
+#  configs: #通用配置
+#    default: # 断路器系统默认配置
+#      #失败率，错误率达到或高于该值则进入open状态
+#      failureRateThreshold: 50
+#      #慢调用阀值，请求执行的时间大于该值时会标记为慢调用
+#      slowCallDurationThreshold: 60s
+#      #慢调用熔断阀值，当慢调用率达到或高于该值时，进入open状态
+#      slowCallRateThreshold: 100
+#      #状态滚动收集器大小，close状态时收集多少请求状态，用于计算失败率。
+#      slidingWindowSize: 100
+#      #状态收集器类型
+#      #COUNT_BASED：根据数量计算，slidingWindowSize为次数
+#      #TIME_BASED：根据时间计算，slidingWindowSize为秒数
+#      slidingWindowType: COUNT_BASED
+#      #计算错误率的最小请求数，不足最小调用次数不会触发任何变化。
+#      minimumNumberOfCalls: 10
+#      #是否自动进入halfOpen状态，默认false-一定时间后进入halfopen，ture-需要通过接口执行。
+#      automaticTransitionFromOpenToHalfOpenEnabled: false
+#      #进入halfOpen状态时，可以被调用次数，就算这些请求的失败率，低于设置的失败率变为close状态，否则变为open。
+#      permittedNumberOfCallsInHalfOpenState: 10
+#      #open状态变为half状态需要等待的时间，即熔断多久后开始尝试访问被熔断的服务。
+#      waitDurationInOpenState: 60s
+#      #事件缓冲区大小？？
+#      eventConsumerBufferSize: 10
+#      #被计为失败的异常集合，默认情况下所有异常都为失败。
+#      recordExceptions:
+#        - java.lang.Exception
+#      #不会被计为失败的异常集合，优先级高于recordExceptions。
+#      ignoreExceptions:
+#        - java.lang.IllegalStateException
+#  instances: #熔断器类型
+#    aCustomizer: #使用默认配置
+#      baseConfig: default
+#    cacheCustomizer: #自定义配置
+#      failureRateThreshold: 10
+#
+#resilience4j.thread-pool-bulkhead:
+#  configs:
+#    default:
+#      maxThreadPoolSize: 50
+#      coreThreadPoolSize: 10
+#      queueCapacity: 1
+
+hystrix:
+  threadpool:
+    default:
+      coreSize: 10
+      maxQueueSize: -1
+      queueSizeRejectionThreshold: 1000
+  command:
+    default:
+      execution:
+        isolation:
+          thread:
+            timeoutInMilliseconds: 60000
+    myfallback:
+      metrics:
+        rollingStats:
+          timeInMilliseconds: 10000 #默认10000即10秒
+      execution:
+        isolation:
+          strategy: SEMAPHORE # THREAD SEMAPHORE
+          thread:
+            timeoutInMilliseconds: 5000
+        timeout:
+          enabled: true #默认true，使用timeoutInMilliseconds作为超时时间，否则使用ribbon的超时
+      circuitBreaker:
+        forceClosed: false #默认false，想强制关闭熔断就改成true
+        requestVolumeThreshold: 2 #窗口采样大小20
+        sleepWindowInMilliseconds: 6000 #短路后休眠时间毫秒
+        errorThresholdPercentage: 30 #判断出错百分比50
+    commandone:
+      metrics:
+        rollingStats:
+          timeInMilliseconds: 10000 #默认10000即10秒
+      execution:
+        isolation:
+          strategy: SEMAPHORE # THREAD SEMAPHORE
+          thread:
+            timeoutInMilliseconds: 6000
+        timeout:
+          enabled: true #默认true，使用timeoutInMilliseconds作为超时时间，否则使用ribbon的超时
+      circuitBreaker:
+        forceClosed: false #默认false，想强制关闭熔断就改成true
+        requestVolumeThreshold: 2 #窗口采样大小20
+        sleepWindowInMilliseconds: 6000 #短路后休眠时间毫秒
+        errorThresholdPercentage: 30 #判断出错百分比50
+    commandtwo:
+      metrics:
+        rollingStats:
+          timeInMilliseconds: 10000 #默认10000即10秒
+      execution:
+        isolation:
+          strategy: SEMAPHORE # THREAD SEMAPHORE
+          thread:
+            timeoutInMilliseconds: 3000
+        timeout:
+          enabled: true #默认true，使用timeoutInMilliseconds作为超时时间，否则使用ribbon的超时
+      circuitBreaker:
+        forceClosed: false #默认false，想强制关闭熔断就改成true
+        requestVolumeThreshold: 2 #窗口采样大小20
+        sleepWindowInMilliseconds: 12000 #短路后休眠时间毫秒
+        errorThresholdPercentage: 50 #判断出错百分比50

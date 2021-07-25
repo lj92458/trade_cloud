@@ -1,0 +1,20 @@
+spring:
+  application:
+    name: market
+  cloud:
+    loadbalancer:
+      ribbon:
+        enabled: true #使用RibbonLoadBalancerClient ，而不是BlockingLoadBalancerClient
+
+server:
+  port: 9005
+eureka:
+  instance:
+    instance-id: service-market #服务名
+    prefer-ip-address: true #使用自己的ip地址注册而不是主机名
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:7001/eureka/ #单节点
+      #defaultZone: http://eureka7001.com:7001/eureka/,http://eureka7002.com:7002/eureka/,http://eureka7003.com:7003/eureka/
+
+
